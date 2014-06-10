@@ -16,23 +16,26 @@
 
 package org.openintents.filemanager;
 
+import java.util.LinkedList;
+import java.util.List;
+
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
-import android.os.Build;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.preference.ListPreference;
 import android.preference.Preference;
+import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceManager;
-import android.view.MenuItem;
 import android.widget.Toast;
-
-import org.openintents.filemanager.compatibility.HomeIconHelper;
-import org.openintents.filemanager.search.SearchableActivity;
-import org.openintents.filemanager.util.UIUtils;
 
 public class PreferenceActivity extends android.preference.PreferenceActivity
                                 implements OnSharedPreferenceChangeListener {
@@ -51,66 +54,38 @@ public class PreferenceActivity extends android.preference.PreferenceActivity
 	public static final String PREFS_ASCENDING = "ascending";
 	
 	public static final String PREFS_DEFAULTPICKFILEPATH = "defaultpickfilepath";
-    public static final String PREFS_USEBESTMATCH = "usebestmatch";
-		
+	
+	private static final int DIALOG_DELETE_BOOKMARKS = 1;
+	
+	private Cursor deleteBookmarksCursor;
+	private List<Uri> bookmarksToDelete = new LinkedList<Uri>();
+	
 	@Override
 	protected void onCreate(Bundle icicle) {
-		UIUtils.setThemeFor(this);
 		
 		super.onCreate(icicle);
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			HomeIconHelper.activity_actionbar_setDisplayHomeAsUpEnabled(this);
-		}
-		
-		UIUtils.setThemeFor(this);
-		
 		addPreferencesFromResource(R.xml.preferences);
+		
+		Preference editBookmarks = findPreference("editbookmarks");
+		editBookmarks.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+		    public boolean onPreferenceClick(Preference pref){
+		    	showDialog(DIALOG_DELETE_BOOKMARKS);
+		        return false;
+		    }
+		});
 		
 		/* Register the onSharedPreferenceChanged listener to update the SortBy ListPreference summary */
 		getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 		/* Set the onSharedPreferenceChanged listener summary to its initial value */
 		changeListPreferenceSummaryToCurrentValue((ListPreference)findPreference("sortby"));
-		
-		// Initialize search history reset confirmation dialog.
-		findPreference("clear_search_button").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				new AlertDialog.Builder(PreferenceActivity.this)
-				.setTitle(R.string.preference_search_title)
-				.setMessage(R.string.preference_search_dialog_message)
-				.setIcon(android.R.drawable.ic_dialog_alert)
-				.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-				    public void onClick(DialogInterface dialog, int whichButton) {
-				    	SearchableActivity.clearSearchRecents(PreferenceActivity.this);
-				    	Toast.makeText(PreferenceActivity.this, R.string.search_history_cleared, Toast.LENGTH_SHORT).show();
-				    }})
-				 .setNegativeButton(android.R.string.cancel, null).show();
-				
-				return true;
-			}
-		});
-		
-		findPreference("usedarktheme").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-			
-			@Override
-			public boolean onPreferenceChange(Preference preference, Object newValue) {
-				//TODO show dialog about restarting app
-				return true;
-			}
-		});
 	}
 
 	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-		case android.R.id.home:
-			HomeIconHelper.showHome(this);
-			break;
-		}
-		return super.onOptionsItemSelected(item);
+	protected void onResume() {
+		super.onResume();
 	}
 
-	public static boolean getMediaScanFromPreference(Context context) {
+	static boolean getMediaScanFromPreference(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 					.getBoolean(PREFS_MEDIASCAN, false);
 	}
@@ -118,7 +93,7 @@ public class PreferenceActivity extends android.preference.PreferenceActivity
 	/**
 	 * @since 2011-09-30
 	 */
-	public static void setShowAllWarning(Context context, boolean enabled) {
+	static void setShowAllWarning(Context context, boolean enabled) {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putBoolean(PREFS_SHOWALLWARNING, enabled);
@@ -128,10 +103,12 @@ public class PreferenceActivity extends android.preference.PreferenceActivity
 	/**
 	 * @since 2011-09-30
 	 */
-	public static boolean getShowAllWarning(Context context) {
+	static boolean getShowAllWarning(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean(PREFS_SHOWALLWARNING, true);
 	}
+	
+
 	
 	static void setDisplayHiddenFiles(Context context, boolean enabled) {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
@@ -141,12 +118,12 @@ public class PreferenceActivity extends android.preference.PreferenceActivity
 	}
 
 
-	public static boolean getDisplayHiddenFiles(Context context) {
+	static boolean getDisplayHiddenFiles(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean(PREFS_DISPLAYHIDDENFILES, true);
 	}
 	
-	public static void setDefaultPickFilePath(Context context, String path) {
+	static void setDefaultPickFilePath(Context context, String path) {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putString(PREFS_DEFAULTPICKFILEPATH, path);
@@ -156,7 +133,7 @@ public class PreferenceActivity extends android.preference.PreferenceActivity
 
 	static String getDefaultPickFilePath(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
-				.getString(PREFS_DEFAULTPICKFILEPATH, Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) ? Environment.getExternalStorageDirectory().getAbsolutePath() : "/");
+				.getString(PREFS_DEFAULTPICKFILEPATH, null);
 	}
 	
 	
@@ -172,14 +149,101 @@ public class PreferenceActivity extends android.preference.PreferenceActivity
 	}
 	
 
-	public static int getSortBy(Context context) {
+	static int getSortBy(Context context) {
 		/* entryValues must be a string-array while we need integers */
 		return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(context)
 								 .getString(PREFS_SORTBY, "1"));
 	}
 	
-	public static boolean getAscending(Context context) {
+	static boolean getAscending(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context)
 				.getBoolean(PREFS_ASCENDING, true);
+	}
+	
+	@Override
+	protected Dialog onCreateDialog(int id) {
+		switch (id) {
+		case DIALOG_DELETE_BOOKMARKS:
+			deleteBookmarksCursor = getBookmarksCursor();
+			AlertDialog dialog = 
+				new AlertDialog.Builder(this)
+					.setTitle(R.string.bookmarks_select_to_delete)
+	        		.setMultiChoiceItems(deleteBookmarksCursor,
+        				BookmarksProvider.CHECKED, BookmarksProvider.NAME,
+        				new DialogInterface.OnMultiChoiceClickListener() {
+			        	    @SuppressLint("NewApi")
+							public void onClick(DialogInterface dialog, int item, boolean checked) {
+			        	    	if (deleteBookmarksCursor.moveToPosition(item)) {
+		        	    			Uri deleteUri = ContentUris.withAppendedId(
+					        	    					BookmarksProvider.CONTENT_URI,
+					        	    					deleteBookmarksCursor.getInt(
+				        	    							deleteBookmarksCursor.getColumnIndex(
+			        	    									BookmarksProvider._ID)));
+		        	    			if(checked)
+		        	    				bookmarksToDelete.add(deleteUri);
+		        	    			else
+		        	    				bookmarksToDelete.remove(deleteUri);
+		        	    			
+
+	        	    				((AlertDialog)dialog).getButton(AlertDialog.BUTTON_POSITIVE)
+    									.setEnabled((bookmarksToDelete.size() > 0) ? true : false);
+		        	    				
+		        	    			ContentValues checkedValues = new ContentValues();
+		        	    			checkedValues.put(BookmarksProvider.CHECKED, checked ? 1 : 0);
+				        	    	getContentResolver().update(deleteUri, checkedValues, null, null);
+				        	    	//Have to use the deprecated requery()
+				        	    	//(see http://code.google.com/p/android/issues/detail?id=2998)
+				        	    	deleteBookmarksCursor.requery();
+			        	    	}
+			        	    	((AlertDialog)dialog).getListView().invalidate();
+			        	    }
+		        	})
+		        	.setPositiveButton(R.string.bookmarks_delete, new DialogInterface.OnClickListener() {
+						
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							for(Uri uri : bookmarksToDelete){
+			        	    	getContentResolver().delete(uri, null, null);
+							}
+		        	    	Toast.makeText(PreferenceActivity.this,
+		        	    			R.string.bookmarks_deleted, Toast.LENGTH_SHORT).show();
+		        			restartBookmarksChecked();
+						}
+					})
+		        	.setNegativeButton(R.string.bookmarks_cancel, new DialogInterface.OnClickListener() {
+		        	    public void onClick(DialogInterface dialog, int item) {
+		        	    	restartBookmarksChecked();
+		        	    }
+		        	}).create();
+			// TODO: need to fix
+			/*	Commenting this out for now.  Need another way to do this or check for SDK > 7.
+			 *  With this in, Android 1.5 crashes upon launch.
+			dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+				@Override
+				public void onShow(DialogInterface dialog) {
+					((AlertDialog)dialog).getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+				}
+			});*/
+			return dialog;
+		}
+		return super.onCreateDialog(id);
+	}
+	
+	private void restartBookmarksChecked(){
+		ContentValues checkedValues = new ContentValues();
+		checkedValues.put(BookmarksProvider.CHECKED, 0);
+    	getContentResolver().update(BookmarksProvider.CONTENT_URI, checkedValues, null, null);
+    	deleteBookmarksCursor.requery();
+    	bookmarksToDelete.clear();
+	}
+	
+	private Cursor getBookmarksCursor(){
+		return managedQuery(BookmarksProvider.CONTENT_URI,
+				new String[] {
+					BookmarksProvider._ID,
+					BookmarksProvider.NAME,
+					BookmarksProvider.PATH,
+					BookmarksProvider.CHECKED
+				}, null, null, null);
 	}
 }

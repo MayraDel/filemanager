@@ -1,21 +1,16 @@
 package org.openintents.filemanager.util;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Enumeration;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-
-import org.openintents.filemanager.R;
-
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Toast;
+import org.openintents.filemanager.FileManagerActivity;
+import org.openintents.filemanager.R;
+
+import java.io.*;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class ExtractManager {
     /**
@@ -24,12 +19,11 @@ public class ExtractManager {
     static final String TAG = "ExtractManager";
 
     private static final int BUFFER_SIZE = 1024;
-    private Context context;
+    private FileManagerActivity activity;
     private ProgressDialog progressDialog;
-	private OnExtractFinishedListener onExtractFinishedListener = null;
 
-    public ExtractManager(Context context) {
-        this.context = context;
+    public ExtractManager(FileManagerActivity activity) {
+        this.activity = activity;
     }
 
     public void extract(File f, String destinationPath) {
@@ -102,10 +96,9 @@ public class ExtractManager {
 
         @Override
         protected void onPreExecute() {
-            progressDialog = new ProgressDialog(context);
-            progressDialog.setCancelable(false);
+            progressDialog = new ProgressDialog(activity);
             progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-            progressDialog.setMessage(context.getResources().getString(R.string.extracting));
+            progressDialog.setMessage(activity.getResources().getString(R.string.extracting));
             progressDialog.show();
             progressDialog.setProgress(0);
             isExtracted = 0;
@@ -123,22 +116,11 @@ public class ExtractManager {
         protected void onPostExecute(Integer result) {
             progressDialog.cancel();
             if (result == error){
-                Toast.makeText(context, R.string.extracting_error, Toast.LENGTH_SHORT).show();
+                Toast.makeText(activity, R.string.extracting_error, Toast.LENGTH_SHORT).show();
             } else if (result == success){
-                Toast.makeText(context, R.string.extracting_success, Toast.LENGTH_SHORT).show();
+                Toast.makeText(activity, R.string.extracting_success, Toast.LENGTH_SHORT).show();
             }
-            
-            if(onExtractFinishedListener != null)
-            	onExtractFinishedListener.extractFinished();
+            activity.refreshList();
         }
     }
-    
-    public interface OnExtractFinishedListener{
-    	public abstract void extractFinished();
-    }
-
-	public ExtractManager setOnExtractFinishedListener(OnExtractFinishedListener listener) {
-		this.onExtractFinishedListener = listener;
-		return this;
-	}
 }

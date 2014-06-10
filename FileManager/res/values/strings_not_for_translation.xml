@@ -19,7 +19,7 @@
 	<!-- ***************************
 	     About information
 	     *************************** -->
-	<string name="about_copyright">Copyright © 2008-2013 OpenIntents</string> 
+	<string name="about_copyright">Copyright © 2008-2012 OpenIntents</string> 
 	<string name="about_website_url">http://www.openintents.org/en/filemanager</string>
 	<string name="about_email">support@openintents.org</string>
 	
@@ -32,7 +32,6 @@
         <item>John Doe</item>
         <item>Matěj Konečný</item>
         <item>Philip Hayes</item>
-        <item>George Venios</item>
     </string-array>
     
     <string-array name="about_documenters"><!-- Add your name here if you helped out -->
@@ -46,7 +45,6 @@
     <string-array name="about_artists"><!-- Add your name here if you helped out -->
         <item>Peli</item>
         <item>Androidicons www.androidicons.com</item>
-        <item>George Venios</item>
     </string-array>
     
 	<!-- ***************************
@@ -57,7 +55,6 @@
         <item>1</item>
         <item>2</item>
         <item>3</item>
-        <item>4</item>
     </string-array>
 	
 </resources> 

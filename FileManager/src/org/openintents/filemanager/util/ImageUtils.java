@@ -48,20 +48,17 @@ public final class ImageUtils {
 	 */
 	public static Drawable resizeDrawable(Drawable drawable, int desireWidth,
 			int desireHeight) {
-				Drawable dr = drawable;
 		int width = drawable.getIntrinsicWidth();
 		int height = drawable.getIntrinsicHeight();
 
 		if (0 < width && 0 < height && desireWidth < width
 				|| desireHeight < height) {
-			Bitmap b = ((BitmapDrawable) drawable).getBitmap();
-			Bitmap resized = Bitmap.createScaledBitmap(b, desireWidth,
-					desireHeight, true);
-			dr = new BitmapDrawable(resized);
-
+			drawable = new BitmapDrawable(resizeBitmap(
+					((BitmapDrawable) drawable).getBitmap(), desireWidth,
+					desireHeight));
 		}
 
-		return dr;
+		return drawable;
 	}
 
 }
